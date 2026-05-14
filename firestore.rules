@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256;
+    }
+
+    function isValidPortfolioItem(data) {
+      return data.keys().hasAll(['coinId', 'symbol', 'amount']) &&
+             data.coinId is string && data.coinId.size() <= 128 &&
+             data.symbol is string && data.symbol.size() <= 20 &&
+             data.amount is number;
+    }
+
+    function isValidWatchlistItem(data) {
+      return data.keys().hasAll(['coinId']) &&
+             data.coinId is string && data.coinId.size() <= 128;
+    }
+
+    function isValidPrediction(data) {
+       return data.keys().hasAll(['coinId', 'prediction', 'updatedAt']) &&
+              data.coinId is string &&
+              data.prediction in ['bullish', 'bearish', 'neutral'];
+    }
+
+    // --- Match Rules ---
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'totalBalance'])
+      );
+
+      // Portfolio subcollection (Relational Sync Pillar)
+      match /portfolio/{coinId} {
+        allow list, get: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPortfolioItem(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      // Watchlist subcollection
+      match /watchlist/{coinId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidWatchlistItem(incoming());
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Global Predictions (System-Generated)
+    match /predictions/{coinId} {
+      allow read: if isSignedIn();
+      // Only system/admins should write here. For this demo, let's keep it read-only for users.
+      allow write: if false;
+    }
+  }
+}

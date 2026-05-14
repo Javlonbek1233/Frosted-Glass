@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with portfolio summary",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "totalBalance": { "type": "number", "description": "Current total balance in USD" }
+      },
+      "required": ["uid", "email"]
+    },
+    "PortfolioItem": {
+      "title": "Portfolio Item",
+      "description": "A specific cryptocurrency holding in a user's portfolio",
+      "type": "object",
+      "properties": {
+        "coinId": { "type": "string", "description": "Coin identifier (e.g., 'bitcoin')" },
+        "symbol": { "type": "string" },
+        "amount": { "type": "number" },
+        "averageBuyPrice": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["coinId", "symbol", "amount"]
+    },
+    "WatchlistItem": {
+      "title": "Watchlist Item",
+      "description": "A coin the user is tracking",
+      "type": "object",
+      "properties": {
+        "coinId": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["coinId"]
+    },
+    "AIPrediction": {
+      "title": "AI Prediction",
+      "description": "AI-generated market prediction for a coin",
+      "type": "object",
+      "properties": {
+        "coinId": { "type": "string" },
+        "prediction": { "type": "string", "enum": ["bullish", "bearish", "neutral"] },
+        "confidence": { "type": "number" },
+        "targetPrice": { "type": "number" },
+        "rationale": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["coinId", "prediction", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Core user metadata"
+    },
+    "/users/{userId}/portfolio/{coinId}": {
+      "schema": "PortfolioItem",
+      "description": "User's current holdings"
+    },
+    "/users/{userId}/watchlist/{coinId}": {
+      "schema": "WatchlistItem",
+      "description": "User's watchlist"
+    },
+    "/predictions/{coinId}": {
+      "schema": "AIPrediction",
+      "description": "Global AI-generated market predictions"
+    }
+  }
+}
